@@ -1,0 +1,95 @@
+import pandas as pd
+import numpy as np
+
+def buy_stocks(sensex_change, stock_data, capital, risk_percent=0.02):
+    """
+    Buys stocks based on Sensex change and stock performance.
+
+    Args:
+        sensex_change: Percentage change in Sensex (negative for a fall).
+        stock_data: DataFrame with stock prices and other relevant data.  Must have a 'Close' column and a unique identifier column (e.g., 'Symbol').
+        capital: Total available capital.
+        risk_percent: Percentage of capital to risk per trade.
+
+    Returns:
+        A dictionary of buy orders (stock symbol: quantity).
+    """
+
+    if sensex_change >= 0:
+        return {}  # No buys if Sensex rises or stays flat
+
+    num_stocks_to_buy = int(abs(sensex_change) / 0.5) * 2
+    if num_stocks_to_buy == 0:
+        return {}
+
+    # Calculate stock returns (replace with your actual return calculation if needed)
+    stock_data['Returns'] = stock_data['Close'].pct_change()
+
+    # Sort stocks by returns (most negative first)
+    sorted_stocks = stock_data.sort_values('Returns')
+
+    buy_orders = {}
+    for i in range(min(num_stocks_to_buy, len(sorted_stocks))):
+        stock = sorted_stocks.iloc[i]  # Get the i-th most negative stock
+        risk_amount = capital * risk_percent
+        buy_price = stock['Close'] # Assuming you buy at the current close price.  Modify if needed.
+        quantity = int(risk_amount / buy_price) # Integer number of shares
+        if quantity > 0: # Only buy if we can afford at least one share
+            buy_orders[stock.name] = quantity # Assuming stock_data index is the stock symbol
+
+    return buy_orders
+
+
+
+# Example usage (replace with your actual data and logic):
+# Sample stock data (replace with your actual data)
+data = {'Symbol': ['A', 'B', 'C', 'D', 'E'],
+        'Close': [150, 100, 200, 120, 180]}
+stock_df = pd.DataFrame(data).set_index('Symbol')
+
+capital = 100000
+sensex_drop = -1.5  # Example: Sensex fell by 1.5%
+
+buy_orders = buy_stocks(sensex_drop, stock_df.copy(), capital)
+print(buy_orders)
+
+
+def sell_stocks(stock_data, buy_price, capital, risk_reward=3, risk_percent=0.02):
+    """
+    Sells stocks based on a risk-reward ratio.
+
+    Args:
+        stock_data: DataFrame with current stock prices. Must have a 'Close' column and a unique identifier column (e.g., 'Symbol').
+        buy_price: The price at which the stock was bought.
+        capital: Total available capital.
+        risk_reward: The desired risk-reward ratio.
+        risk_percent: Percentage of capital risked on the trade.
+
+    Returns:
+        A dictionary of sell orders (stock symbol: quantity).
+    """
+
+    sell_orders = {}
+    for symbol, current_price in stock_data['Close'].items():  # Iterate through each stock
+        risk_amount = capital * risk_percent
+        target_price = buy_price + (buy_price - (buy_price * risk_percent / buy_price)) * risk_reward # Target price based on risk-reward
+        if current_price >= target_price:
+            # Assuming you sell all shares at the target price
+            sell_orders[symbol] = stock_data.loc[symbol, 'quantity_held'] # You'll need to track quantity_held somewhere
+
+    return sell_orders
+
+
+# Example usage (replace with your actual data and logic)
+# ... (previous code to determine buy_orders) ...
+
+# Simulate holding some stocks (replace with your actual holdings)
+stock_df['quantity_held'] = 0
+for symbol, quantity in buy_orders.items():
+    stock_df.loc[symbol, 'quantity_held'] = quantity
+
+# Simulate a price increase (replace with your actual price data)
+stock_df['Close'] = [250, 150, 300, 220, 280] # Example: Prices have gone up
+
+sell_orders = sell_stocks(stock_df, stock_df['Close'], capital) # Replace stock_df['Close'] with the original buy prices
+print(sell_orders)
